@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS tb_historico_movimentacao (
     id_origem INTEGER,         -- De onde a peça saiu (id_sub_endereco)
     id_destino INTEGER,        -- Para onde a peça foi (id_sub_endereco)
     quantidade INT NOT NULL,
+    quantidade_anterior INTEGER NOT NULL, -- Quanto tinha antes
+    quantidade_atual INTEGER NOT NULL, -- Quanto ficou depois
     motivo VARCHAR(50) NOT NULL, -- Ex: 'TRANSFERENCIA', 'AUDITORIA_FANTASMA', 'AJUSTE'
     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_produto) REFERENCES tb_produtos(id_produto)

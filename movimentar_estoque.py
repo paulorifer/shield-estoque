@@ -9,9 +9,9 @@ def movimentar_peca(sku, qtd_movimento, operacao):
     cursor.execute("PRAGMA foreign_keys = ON;")
 
     try:
-        # 2. Localiza o produto pelo SKU para descobrir o seu ID e o saldo atual na localização
+        # 2. Localiza o produto pelo SKU para descobrir o seu ID, o saldo atual e a descrição
         cursor.execute("""
-            SELECT l.id_estoque, l.quantidade, p.descricao
+            SELECT l.id_estoque, l.quantidade, p.descricao, p.id_produto
             FROM tb_estoque_localizacao l
             JOIN tb_produtos p ON l.id_produto = p.id_produto
             WHERE p.codigo_sku = ?
@@ -23,7 +23,7 @@ def movimentar_peca(sku, qtd_movimento, operacao):
             print(f"Erro: O produto com SKU '{sku}' não foi encontrado no estoque!")
             return
 
-        id_estoque, quantidade_atual, descricao = resultado
+        id_estoque, quantidade_atual, descricao, id_produto = resultado
 
         # 3. Calcula o novo saldo dependendo se é ENTRADA (soma) ou SAIDA (subtrai)
         if operacao.upper() == 'ENTRADA':
@@ -44,10 +44,18 @@ def movimentar_peca(sku, qtd_movimento, operacao):
             WHERE id_estoque = ?
         """, (nova_quantidade, id_estoque))
 
-        # 5. Salva (commit) as alterações no banco de dados
+        # 5. Insere o registo na tabela de auditoria (Histórico)
+        cursor.execute("""
+            INSERT INTO tb_historico_movimentacao 
+            (id_produto, quantidade, quantidade_anterior, quantidade_atual, motivo)
+            VALUES (?, ?, ?, ?, ?)
+        """, (id_produto, qtd_movimento, quantidade_atual, nova_quantidade, operacao.upper()))
+
+        # 6. Salva (commit) todas as alterações no banco de dados com segurança
         conn.commit()
-        print(f"Sucesso! Movimentação de {operacao} realizada para o produto: {descricao}")
-        print(f"Novo saldo na gaveta: {nova_quantidade} unidades.")
+        print(f"Sucesso! Movimentação de {operacao.upper()} realizada para o produto: {descricao}")
+        print(f"Saldo anterior: {quantidade_atual} | Novo saldo: {nova_quantidade} unidades.")
+        print(f"Histórico de auditoria registado com sucesso!")
 
     except Exception as e:
         # Se der algum erro, desfaz qualquer alteração para proteger os dados
@@ -60,5 +68,5 @@ def movimentar_peca(sku, qtd_movimento, operacao):
 
 # Testando a movimentação: Retirar 5 unidades do amortecedor (SKU-AMOR-01)
 if __name__ == "__main__":
-    print("A processar movimentação de estoque...")
-    movimentar_peca(sku="SKU-AMOR-01", qtd_movimento=5, operacao="SAIDA")
+    print("A processar movimentação de estoque com auditoria...")
+    movimentar_peca(sku="SKU-AMOR-01", qtd_movimento=2, operacao="SAIDA")
